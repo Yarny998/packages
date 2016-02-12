@@ -1,0 +1,54 @@
+# Maintainer: Tux <info@archphile.org>
+# Based on ympd-git from AUR made by the following people:
+# Maintainer: Philippe Mongeau <ph.mongeau@gmail.com>
+
+pkgname=ympd-jesselite
+_pkgname=ympd
+pkgver=1.2.3.r55.g4295d15
+pkgrel=1
+pkgdesc="A standalone MPD Web GUI - Default port set to 80"
+arch=('arm' 'armv6h' 'armv7h')
+url="http://www.ympd.org"
+license=('BSD')
+depends=('libmpdclient')
+makedepends=('cmake' 'git')
+optdepends=()
+provides=("${_pkgname}")
+conflicts=("${_pkgname}")
+replaces=('ympd-git')
+source=("git+https://github.com/notandy/ympd.git"
+        "dirble_api_key.patch"
+        "fix_handling_of_commas_in_library_item_names.patch"
+        "remember_last_folder_in_browser.patch")
+
+sha1sums=('SKIP'
+          'b7b3192dc9ad3c9368d911127c969de320aff189'
+          '65daf022be3f4cbef5ef4572e2ad17dc38e3c99f'
+          '0c575b514bf117fbbe88304c907250f1a11a965a')
+
+pkgver() {
+  cd "${srcdir}/${_pkgname}"
+  git describe --long --tags | sed -E 's/^v//; s/([^-]*-g)/r\1/; s/-/./g'
+}
+
+build() {
+  cd "${srcdir}/${_pkgname}"
+
+  msg2 "Applying various patches"
+  patch -Np1 -i ../dirble_api_key.patch
+  patch -Np1 -i ../fix_handling_of_commas_in_library_item_names.patch
+  patch -Np1 -i ../remember_last_folder_in_browser.patch
+  
+  mkdir build && cd build
+  cmake .. -DCMAKE_INSTALL_PREFIX:PATH=/usr
+  make
+}
+
+package() {
+  cd "${srcdir}/${_pkgname}/build"
+  make DESTDIR="$pkgdir/" install
+  install -Dm644  "${srcdir}/${_pkgname}/contrib/ympd.service" "$pkgdir/usr/lib/systemd/system/ympd.service"
+  install -Dm644  "${srcdir}/${_pkgname}/contrib/ympd.default" "$pkgdir/etc/default/ympd"
+  sed '/WEB_PORT=8080/c WEB_PORT=80' -i "$pkgdir/etc/default/ympd"
+}
+
